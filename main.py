@@ -1,9 +1,12 @@
 from src.data_collection.meta_ads import fetch_meta_ads
 from src.data_collection.google_ads import fetch_google_ads
+from src.data_collection.sample_google_ads_random import create_random_sample
 from src.data_collection.load_google_ads import load_and_standardize_google_ads
 from src.preprocessing.clean_sponsors import clean_google_sponsors
 from src.preprocessing.group_sponsors import group_similar_sponsors
 from src.analysis.inspect_sponsor_groups import inspect_sponsor_groups
+from src.analysis.dataset_summary import generate_dataset_summary
+from src.analysis.create_visualizations import create_visualizations
 
 
 def main():
@@ -26,7 +29,18 @@ def main():
     print(f"          -> {len(google_records)} placeholder record(s).")
 
     # ------------------------------------------------------------------
-    # Step 2 — Load, chunk-read, and standardize raw Google data
+    # Step 1.5 — Random sampling: draw a representative sample from the
+    #             raw 2.5GB CSV (replaces biased sequential first-N-rows).
+    # ------------------------------------------------------------------
+    print("\n[Step 1.5] Creating random sample from raw Google ads data...")
+    random_sample_df = create_random_sample()
+    if random_sample_df is not None:
+        print(f"           -> Random sample created: {len(random_sample_df):,} rows")
+    else:
+        print("           -> Skipped (raw CSV not found).")
+
+    # ------------------------------------------------------------------
+    # Step 2 — Standardize columns from the random sample
     # ------------------------------------------------------------------
     print("\n[Step 2]  Loading & standardizing Google Political Ads data...")
     google_std_df = load_and_standardize_google_ads()
@@ -61,6 +75,24 @@ def main():
         print("          -> Skipped (grouped file missing).")
 
     # ------------------------------------------------------------------
+    # Step 6 — Dataset summary statistics
+    # ------------------------------------------------------------------
+    print("\n[Step 6]  Generating dataset summary statistics...")
+    summary = generate_dataset_summary()
+    if summary is not None:
+        print(f"          -> Summary saved to dataset_summary.json")
+    else:
+        print("          -> Skipped (grouped file missing).")
+
+    # ------------------------------------------------------------------
+    # Step 7 — Generate visualizations
+    # ------------------------------------------------------------------
+    print("\n[Step 7]  Generating visualizations...")
+    viz_ok = create_visualizations()
+    if not viz_ok:
+        print("          -> Skipped (grouped file missing).")
+
+    # ------------------------------------------------------------------
     # Pipeline Summary
     # ------------------------------------------------------------------
     print("\n" + "=" * 60)
@@ -74,6 +106,11 @@ def main():
     if summary_df is not None:
         print(f"  Sponsor groups total     [Step 5]  : {len(summary_df):,}")
         print(f"  Groups needing review    [Step 5]  : {len(review_df):,}")
+    if summary is not None:
+        print(f"  Total ads in summary     [Step 6]  : {summary['total_ads']:,}")
+        print(f"  Unique sponsor groups    [Step 6]  : {summary['unique_sponsor_groups']:,}")
+    if viz_ok:
+        print(f"  Figures saved            [Step 7]  : outputs/figures/ (4 charts)")
     print("=" * 60)
 
 
