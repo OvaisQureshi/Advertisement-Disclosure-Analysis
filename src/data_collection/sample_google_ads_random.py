@@ -56,8 +56,7 @@ OUTPUT_FILE_PATH = Path("data/raw/google_ads_sample_random.csv")
 # CONFIGURATION
 # ---------------------------------------------------------------------------
 CHUNK_SIZE   = 5_000    # rows read per iteration — keeps peak RAM flat
-SAMPLE_FRAC  = 0.05     # fraction kept per chunk (5% of each 5k-row chunk
-                        # = ~250 rows/chunk, ~77,500 pool rows for a 1.55M file)
+SAMPLE_FRAC  = 0.10     # fraction kept per chunk (10% of each chunk to ensure we hit 50k after US filter)
 TARGET_ROWS  = 50_000   # final output size — 5x more data for richer analysis
 RANDOM_STATE = 42       # fixed seed — guarantees identical output every run
 
@@ -113,6 +112,15 @@ def create_random_sample() -> pd.DataFrame | None:
 
         for chunk in chunk_iter:
             chunks_processed += 1
+
+            # Filter to US ads only to match Meta dataset
+            if "Regions" in chunk.columns:
+                is_us = chunk["Regions"].fillna("").astype(str).str.strip().str.upper() == "US"
+                chunk = chunk[is_us]
+                
+            # If the chunk has no US ads, skip sampling for this chunk
+            if len(chunk) == 0:
+                continue
 
             # Sample a small random fraction of this chunk.
             # min(frac=1.0) guards against edge case where chunk is tiny.

@@ -7,6 +7,9 @@ from src.preprocessing.group_sponsors import group_similar_sponsors
 from src.analysis.inspect_sponsor_groups import inspect_sponsor_groups
 from src.analysis.dataset_summary import generate_dataset_summary
 from src.analysis.create_visualizations import create_visualizations
+from src.data_collection.load_meta_ads import load_and_standardize_meta_ads
+from src.data_collection.run_meta_pipeline import run_meta_pipeline
+from src.analysis.compare_platforms import compare_platforms
 
 
 def main():
@@ -91,6 +94,35 @@ def main():
     viz_ok = create_visualizations()
     if not viz_ok:
         print("          -> Skipped (grouped file missing).")
+
+    # ------------------------------------------------------------------
+    # Step 8A — Standardize Meta Ad Library CSV
+    # Skips gracefully if data/raw/meta_ads_raw.csv not present.
+    # ------------------------------------------------------------------
+    print("\n[Step 8A] Standardizing Meta Ad Library data...")
+    meta_std_df = load_and_standardize_meta_ads()
+    if meta_std_df is not None:
+        print(f"          -> Meta standardized: {len(meta_std_df):,} rows")
+    else:
+        print("          -> Skipped (place meta_ads_raw.csv in data/raw/ to enable).")
+
+    # ------------------------------------------------------------------
+    # Step 8B — Run full pipeline on Meta data
+    # Only runs if 8A succeeded (meta_ads_standardized.csv exists).
+    # ------------------------------------------------------------------
+    print("\n[Step 8B] Running Meta preprocessing pipeline...")
+    meta_ok = run_meta_pipeline()
+    if not meta_ok:
+        print("          -> Skipped (meta_ads_standardized.csv missing).")
+
+    # ------------------------------------------------------------------
+    # Step 8C — Cross-platform comparison
+    # Only runs if both Google and Meta grouped files exist.
+    # ------------------------------------------------------------------
+    print("\n[Step 8C] Cross-platform comparison (Google vs Meta)...")
+    compare_ok = compare_platforms()
+    if not compare_ok:
+        print("          -> Skipped (requires both Google and Meta grouped files).")
 
     # ------------------------------------------------------------------
     # Pipeline Summary
